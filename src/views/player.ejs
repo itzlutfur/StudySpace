@@ -1,0 +1,117 @@
+<%- include('partials/head', { title, theme: typeof theme !== 'undefined' ? theme : 'dark', pageScript: '/js/player.js' }) %>
+
+<div class="player-layout" id="player-layout"
+     data-lesson-id="<%= lesson.id %>"
+     data-type="<%= lesson.type %>"
+     data-position="<%= progress ? progress.position_sec : 0 %>"
+     data-duration="<%= progress ? progress.duration_sec : 0 %>"
+     data-offer-resume="<%= offerResume ? '1' : '0' %>">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <a class="crumbs-back" href="/courses/<%= course.id %>">‹ <%= course.title %></a>
+      <button class="btn btn-icon sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle lesson list">☰</button>
+    </div>
+    <div class="sidebar-progress">
+      <div class="progress-track"><div class="progress-fill" style="width:<%= course.stats.percent %>%"></div></div>
+      <span class="muted small">Lesson <%= index + 1 %> of <%= total %> · <%= course.stats.percent %>% of course</span>
+    </div>
+    <div class="sidebar-list">
+      <% grouped.forEach(function (group) { %>
+      <div class="sidebar-group">
+        <div class="sidebar-group-title"><%= group.name || 'Lessons' %></div>
+        <% group.lessons.forEach(function (l) { %>
+        <% const p = course.progressByLessonId.get(l.id); const done = p && (p.completed || (p.watched_pct || 0) >= 0.9); %>
+        <a class="sidebar-lesson <%= l.id === lesson.id ? 'active' : '' %> <%= l.missing ? 'is-missing' : '' %>"
+           href="/player/<%= l.id %>" data-lesson-id="<%= l.id %>">
+          <span class="lesson-check <%= done ? 'done' : '' %>"><%= done ? '✓' : '' %></span>
+          <span class="lesson-title"><%= l.title %></span>
+        </a>
+        <% }) %>
+      </div>
+      <% }) %>
+    </div>
+  </aside>
+
+  <div class="player-main">
+    <header class="player-head">
+      <div>
+        <h1 id="lesson-title"><%= lesson.title %></h1>
+        <p class="muted small">
+          Lesson <%= index + 1 %> of <%= total %>
+          <% if (lesson.section) { %> · <%= lesson.section %><% } %>
+          · <span id="lesson-type"><%= lesson.type %></span>
+        </p>
+      </div>
+      <div class="player-nav">
+        <% if (prev) { %>
+        <a class="btn btn-sm" id="prev-btn" href="/player/<%= prev.id %>" title="Previous lesson (p)">‹ Prev</a>
+        <% } else { %>
+        <button class="btn btn-sm" id="prev-btn" disabled title="Previous lesson (p)">‹ Prev</button>
+        <% } %>
+        <% if (next) { %>
+        <a class="btn btn-sm" id="next-btn" href="/player/<%= next.id %>" title="Next lesson (n)">Next ›</a>
+        <% } else { %>
+        <button class="btn btn-sm" id="next-btn" disabled title="Next lesson (n)">Next ›</button>
+        <% } %>
+        <button class="btn btn-sm" id="complete-btn" type="button">Mark complete</button>
+      </div>
+    </header>
+
+    <% if (!exists) { %>
+    <div class="alert alert-error">
+      This file is missing from disk. It may have been moved or deleted.
+      <a href="/courses/<%= course.id %>">Back to course</a>
+    </div>
+    <% } %>
+
+    <div class="stage" id="stage">
+      <% if (lesson.type === 'video') { %>
+      <video id="media" controls preload="metadata" playsinline
+             src="/player/<%= lesson.id %>/stream"
+             <%= lesson.warn ? 'data-warn="1"' : '' %>></video>
+      <% } else if (lesson.type === 'audio') { %>
+      <div class="audio-wrap">
+        <div class="audio-art">♪</div>
+        <audio id="media" controls preload="metadata" src="/player/<%= lesson.id %>/stream"></audio>
+      </div>
+      <% } else if (lesson.type === 'document') { %>
+      <iframe id="doc-frame" class="doc-frame" src="/player/<%= lesson.id %>/document" title="<%= lesson.title %>"></iframe>
+      <% } else { %>
+      <div class="text-lesson" id="text-lesson" data-src="/player/<%= lesson.id %>/document">Loading…</div>
+      <% } %>
+    </div>
+
+    <% if (lesson.warn) { %>
+    <div class="alert alert-warn"><%= lesson.warn %> Try opening the file in VLC or another player.</div>
+    <% } %>
+
+    <% if (offerResume) { %>
+    <div class="resume-banner" id="resume-banner">
+      <span>You stopped at <strong><%= resumeAt %></strong>. Pick up where you left off?</span>
+      <div class="row-actions">
+        <button class="btn btn-sm" id="start-over-btn" type="button">Start over</button>
+        <button class="btn btn-sm btn-primary" id="resume-btn" type="button">Resume</button>
+      </div>
+    </div>
+    <% } %>
+
+    <div class="panels">
+      <section class="panel">
+        <h2 class="panel-title">★ Bookmarks <span class="count-pill" id="bookmark-count"><%= bookmarkCount %></span></h2>
+        <ul class="bookmark-list" id="bookmark-list"></ul>
+        <div class="row-actions">
+          <button class="btn btn-sm" id="add-bookmark-btn" type="button">+ Add at current time</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">✎ My notes</h2>
+        <textarea id="notes" class="notes-area" placeholder="Notes for this lesson…"><%= notesBody %></textarea>
+        <div class="muted small" id="notes-status">Saved</div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

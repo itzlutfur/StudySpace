@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="<%= typeof theme !== 'undefined' && theme ? theme : 'dark' %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> · CourseStream</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>▶</text></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span class="brand-mark">▶</span>
+      <span class="brand-name">CourseStream</span>
+    </a>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost" id="theme-toggle" type="button" aria-label="Toggle theme">
+        <span class="theme-icon-dark">☾</span><span class="theme-icon-light">☀</span>
+      </button>
+      <a class="btn btn-primary" href="/courses/add">+ Add Course</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <%- body %>
+  </main>
+
+  <div class="toast-host" id="toast-host" aria-live="polite"></div>
+
+  <script src="/js/app.js"></script>
+  <% if (typeof pageScript !== 'undefined' && pageScript) { %>
+    <script src="<%= pageScript %>"></script>
+  <% } %>
+</body>
+</html>

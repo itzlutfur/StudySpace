@@ -1,0 +1,21 @@
+{
+  "name": "coursestream",
+  "version": "1.0.0",
+  "description": "Stream locally downloaded courses with persistent progress tracking",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js --no-open --verbose",
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.21.2"
+  },
+  "license": "MIT",
+  "private": true
+}

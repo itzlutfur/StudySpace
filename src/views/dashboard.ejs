@@ -1,0 +1,86 @@
+<%- include('partials/head', { title, theme: typeof theme !== 'undefined' ? theme : 'dark', pageScript: '/js/dashboard.js' }) %>
+
+<section class="hero">
+  <div>
+    <h1>Your courses</h1>
+    <p class="muted">Point CourseStream at a folder you already downloaded and pick up where you left off.</p>
+  </div>
+</section>
+
+<% if (continueItem) { %>
+<section class="continue-card">
+  <div class="continue-main">
+    <span class="continue-badge">▶ Continue where you left off</span>
+    <h2><%= continueItem.course.title %></h2>
+    <p class="muted">
+      Lesson <%= continueItem.course.lessons.findIndex(l => l.id === continueItem.lesson.id) + 1 %> · <%= continueItem.lesson.title %>
+    </p>
+    <div class="progress-line">
+      <div class="progress-track">
+        <div class="progress-fill" style="width:<%= Math.round((continueItem.progress.watched_pct || 0) * 100) %>%"></div>
+      </div>
+      <span class="muted small"><%= continueItem.resumeAt %> watched</span>
+    </div>
+  </div>
+  <a class="btn btn-primary btn-lg" href="/player/<%= continueItem.lesson.id %>?resume=1">Resume ▸</a>
+</section>
+<% } %>
+
+<section class="library">
+  <div class="library-head">
+    <h2>Library <span class="count-pill"><%= courses.length %></span></h2>
+    <div class="library-tools">
+      <input type="search" id="course-search" class="input" placeholder="Filter courses…" aria-label="Filter courses">
+      <select id="course-sort" class="input" aria-label="Sort courses">
+        <option value="recent" <%= sort === 'recent' ? 'selected' : '' %>>Recently opened</option>
+        <option value="name" <%= sort === 'name' ? 'selected' : '' %>>Name A–Z</option>
+        <option value="progress" <%= sort === 'progress' ? 'selected' : '' %>>Progress</option>
+      </select>
+    </div>
+  </div>
+
+  <% if (courses.length === 0) { %>
+  <div class="empty-state">
+    <div class="empty-icon">📁</div>
+    <h3>No courses yet</h3>
+    <p class="muted">Add a folder of downloaded course files and start streaming.</p>
+    <a class="btn btn-primary btn-lg" href="/courses/add">+ Add your first course</a>
+  </div>
+  <% } else { %>
+  <div class="course-grid" id="course-grid">
+    <% courses.forEach(function (c) { %>
+    <article class="course-card" data-title="<%= c.title.toLowerCase() %>" data-percent="<%= c.stats.percent %>" data-last="<%= c.lastOpenedAt || '' %>">
+      <a class="course-open" href="/courses/<%= c.id %>">
+        <h3><%= c.title %></h3>
+        <div class="progress-track"><div class="progress-fill" style="width:<%= c.stats.percent %>%"></div></div>
+        <div class="course-meta">
+          <span><%= c.stats.percent %>%</span>
+          <span class="muted"><%= c.stats.completed %> / <%= c.stats.counted %> lessons</span>
+        </div>
+      </a>
+      <% if (c.stats.missing > 0) { %>
+      <p class="warn small"><%= c.stats.missing %> file<%= c.stats.missing === 1 ? '' : 's' %> missing</p>
+      <% } %>
+      <div class="course-actions">
+        <% if (c.resumeLessonId) { %>
+        <a class="btn btn-sm" href="/player/<%= c.resumeLessonId %>?resume=1">Resume</a>
+        <% } else { %>
+        <a class="btn btn-sm" href="/courses/<%= c.id %>">Open</a>
+        <% } %>
+        <button class="btn btn-sm btn-icon" data-menu-toggle="<%= c.id %>" aria-label="Course menu" aria-haspopup="true">⋯</button>
+        <div class="menu" data-menu="<%= c.id %>" hidden>
+          <a href="/courses/<%= c.id %>">Open course</a>
+          <button data-action="rename" data-id="<%= c.id %>">Rename…</button>
+          <button data-action="rescan" data-id="<%= c.id %>">Rescan folder</button>
+          <hr>
+          <button class="danger" data-action="remove" data-id="<%= c.id %>" data-title="<%= c.title %>">Remove course</button>
+        </div>
+      </div>
+    </article>
+    <% }) %>
+  </div>
+  <p class="no-match muted" id="no-match" hidden>No courses match that filter.</p>
+  <% } %>
+</section>
+
+<%- include('partials/foot') %>

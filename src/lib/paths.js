@@ -67,8 +67,13 @@ export function parentDir(p) {
 /** Split a path into its individual name segments, for breadcrumbs. */
 export function pathSegments(p) {
   const resolved = path.resolve(p);
-  const parts = resolved.split(path.sep).filter(Boolean);
   const root = path.parse(resolved).root;
+  // On Windows the drive letter ("C:") is part of the root, not a segment.
+  // Leaving it in would make the breadcrumb builder produce "C:\C:\Users".
+  const parts = resolved
+    .slice(root.length)
+    .split(path.sep)
+    .filter(Boolean);
   return { root, parts };
 }
 

@@ -18,21 +18,25 @@ export function mergeWatchedPct(previousPct, positionSec, durationSec) {
   return Math.max(clamp01(previousPct), clamp01(Number(positionSec) / dur));
 }
 
-/** A lesson counts as complete at 90% watched, or when marked manually. */
-export function isComplete({ watchedPct, completed }) {
+/**
+ * A lesson counts as complete at 90% watched, or when marked manually.
+ *
+ * These helpers read raw `progress` table rows, whose columns are snake_case.
+ */
+export function isComplete({ watched_pct, completed }) {
   if (completed) return true;
-  return clamp01(watchedPct) >= COMPLETION_THRESHOLD;
+  return clamp01(watched_pct) >= COMPLETION_THRESHOLD;
 }
 
 /**
  * Whether to offer a "resume" affordance for a lesson.
  * Below 5 seconds there is nothing to resume; at/above 95% the lesson is done.
  */
-export function shouldOfferResume({ positionSec, watchedPct, completed }) {
+export function shouldOfferResume({ position_sec, watched_pct, completed }) {
   if (completed) return false;
-  const pos = Number(positionSec) || 0;
+  const pos = Number(position_sec) || 0;
   if (pos < RESUME_MIN_SECONDS) return false;
-  if (clamp01(watchedPct) >= RESUME_MAX_PCT) return false;
+  if (clamp01(watched_pct) >= RESUME_MAX_PCT) return false;
   return true;
 }
 
@@ -53,7 +57,7 @@ export function courseStats(lessons, progressByLessonId) {
     const p = progressByLessonId.get(lesson.id);
     if (!p) continue;
     if (isComplete(p)) completed += 1;
-    watchedSum += clamp01(p.watchedPct);
+    watchedSum += clamp01(p.watched_pct);
   }
 
   const pct = denom > 0 ? completed / denom : 0;

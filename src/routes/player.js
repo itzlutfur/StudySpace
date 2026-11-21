@@ -4,84 +4,12 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
-import { getCourse, getLessonWithCourse, touchCourse } from '../lib/courses.js';
-import { isInside, relativeKey } from '../lib/paths.js';
-import { mimeFor, parseRange, extOf, classify } from '../lib/media.js';
-import { shouldOfferResume, formatTime } from '../lib/progress.js';
-import { getSetting } from '../lib/settings.js';
+import { getLessonWithCourse } from '../lib/courses.js';
+import { isInside } from '../lib/paths.js';
+import { mimeFor, parseRange, classify } from '../lib/media.js';
 import { get } from '../db/index.js';
 
 const router = express.Router();
-
-/**
- * GET /player/:lessonId — the player page.
- */
-router.get('/:lessonId', async (req, res) => {
-  const lessonId = Number(req.params.lessonId);
-  const lesson = getLessonWithCourse(lessonId);
-  if (!lesson) {
-    return res.status(404).render('error', {
-      title: 'Lesson not found',
-      message: 'That lesson is not in your library.',
-      theme: getSetting('theme', 'dark'),
-    });
-  }
-
-  const course = getCourse(lesson.course_id);
-  if (!course) {
-    return res.status(404).render('error', {
-      title: 'Course not found',
-      message: 'That course is not in your library.',
-      theme: getSetting('theme', 'dark'),
-    });
-  }
-  touchCourse(course.id);
-
-  const index = course.lessons.findIndex((l) => l.id === lessonId);
-  const prev = index > 0 ? course.lessons[index - 1] : null;
-  const next = index >= 0 && index < course.lessons.length - 1 ? course.lessons[index + 1] : null;
-
-  const progressRow = get('SELECT * FROM progress WHERE lesson_id = ?', [lessonId]) ?? null;
-  const noteRow = get('SELECT body FROM notes WHERE lesson_id = ?', [lessonId]) ?? null;
-  const bookmarks = get('SELECT COUNT(*) AS n FROM bookmarks WHERE lesson_id = ?', [lessonId])?.n ?? 0;
-
-  // Does the file still exist on disk?
-  let exists = true;
-  try {
-    await fsp.access(lesson.abs_path);
-  } catch {
-    exists = false;
-  }
-
-  const grouped = [];
-  for (const l of course.lessons) {
-    const key = l.section ?? '';
-    let group = grouped.find((g) => g.name === key);
-    if (!group) {
-      group = { name: key, lessons: [] };
-      grouped.push(group);
-    }
-    group.lessons.push(l);
-  }
-
-  res.render('player', {
-    title: lesson.title,
-    course,
-    lesson,
-    grouped,
-    prev,
-    next,
-    index,
-    total: course.lessons.length,
-    progress: progressRow,
-    notesBody: noteRow?.body ?? '',
-    bookmarkCount: bookmarks,
-    exists,
-    offerResume: shouldOfferResume(progressRow ?? {}),
-    resumeAt: formatTime(progressRow?.position_sec ?? 0),
-    theme: getSetting('theme', 'dark'),
-  });
-});
 
 /**
  * GET /player/:lessonId/stream — serve the media file with Range support.

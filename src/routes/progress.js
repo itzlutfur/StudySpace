@@ -49,7 +49,7 @@ router.post('/:lessonId', (req, res) => {
 
   const existing = ensureProgress(lessonId);
   const watchedPct = mergeWatchedPct(existing.watched_pct, position, duration);
-  const completed = existing.completed ? 1 : isComplete({ watchedPct, completed: 0 }) ? 1 : 0;
+  const completed = existing.completed ? 1 : isComplete({ watched_pct: watchedPct, completed: 0 }) ? 1 : 0;
 
   run(
     `UPDATE progress

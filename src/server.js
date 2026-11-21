@@ -54,13 +54,15 @@ async function main() {
   await initDb();
 
   const app = express();
-  app.set('view engine', 'ejs');
-  app.set('views', config.VIEWS_DIR);
   app.set('x-powered-by', false);
 
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true }));
-  app.use(express.static(config.PUBLIC_DIR, { maxAge: '1h' }));
+
+  // Hashed build assets — safe to cache forever.
+  app.use('/assets', express.static(path.join(config.DIST_DIR, 'assets'), { immutable: true, maxAge: '1y' }));
+  // The stylesheet is served from public/css (not hashed).
+  app.use('/css', express.static(path.join(config.PUBLIC_DIR, 'css'), { maxAge: '1h' }));
 
   registerRoutes(app);
 

@@ -46,6 +46,8 @@ export const RESUME_MAX_PCT = 0.95;       // don't offer resume at/above this
 
 export const VIEWS_DIR = path.join(ROOT, 'src', 'views');
 export const PUBLIC_DIR = path.join(ROOT, 'public');
+/** Built React bundle, emitted by `vite build` into public/dist. */
+export const DIST_DIR = path.join(PUBLIC_DIR, 'dist');
 
 export default {
   ROOT,
@@ -62,4 +64,5 @@ export default {
   RESUME_MAX_PCT,
   VIEWS_DIR,
   PUBLIC_DIR,
+  DIST_DIR,
 };

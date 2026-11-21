@@ -11,6 +11,7 @@ import {
   restoreCourse,
   reconcileCourse,
   renameCourse,
+  touchCourse,
 } from '../lib/courses.js';
 import { get } from '../db/index.js';
 
@@ -103,8 +104,12 @@ router.post('/', async (req, res) => {
   }
 
   const byRel = new Map(scan.lessons.map((l) => [l.relPath, l]));
-  const selected = requested.length
-    ? requested.map((l) => byRel.get(l.relPath)).filter(Boolean)
+  // Accept either a list of relative path strings or a list of lesson objects.
+  const requestedPaths = requested.map((l) =>
+    typeof l === 'string' ? l : l?.relPath
+  );
+  const selected = requestedPaths.length
+    ? requestedPaths.map((rel) => byRel.get(rel)).filter(Boolean)
     : scan.lessons;
 
   if (!selected.length) {
@@ -154,6 +159,45 @@ router.get('/', (req, res) => {
     lessonCount: c.lessons.length,
   }));
   res.json({ courses });
+});
+
+/**
+ * GET /api/courses/:id — one course with its lessons, grouped by section,
+ * each lesson carrying its progress row.
+ */
+router.get('/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const course = getCourse(id);
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  touchCourse(course.id);
+
+  const grouped = [];
+  for (const lesson of course.lessons) {
+    const key = lesson.section ?? '';
+    let group = grouped.find((g) => g.name === key);
+    if (!group) {
+      group = { name: key, lessons: [] };
+      grouped.push(group);
+    }
+    group.lessons.push({
+      ...lesson,
+      progress: course.progressByLessonId.get(lesson.id) ?? null,
+    });
+  }
+
+  res.json({
+    course: {
+      id: course.id,
+      title: course.title,
+      rootPath: course.root_path,
+      createdAt: course.created_at,
+      lastOpenedAt: course.last_opened_at,
+      stats: course.stats,
+      resumeLessonId: course.resumeLessonId,
+      lessonCount: course.lessons.length,
+    },
+    grouped,
+  });
 });
 
 /** DELETE /api/courses/:id — remove a course. Returns a snapshot for undo. */

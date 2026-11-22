@@ -47,8 +47,8 @@ const TABS = [
 
 /** The icon tile for a lesson in the playlist, by status. */
 function lessonIcon(lesson, isCurrent) {
-  if (isCurrent) return { Glyph: IconPlay, tone: 'bg-accent text-white' };
   if (lesson.completed) return { Glyph: IconCheck, tone: 'bg-ok-soft text-ok' };
+  if (isCurrent) return { Glyph: IconPlay, tone: 'bg-accent text-white' };
   if (lesson.type === 'video') return { Glyph: IconVideo, tone: 'bg-white/[0.04] text-ink-3' };
   if (lesson.type === 'audio') return { Glyph: IconClock, tone: 'bg-white/[0.04] text-ink-3' };
   return { Glyph: IconDocument, tone: 'bg-white/[0.04] text-ink-3' };
@@ -72,7 +72,8 @@ export default function Player() {
   const [scanning, setScanning] = useState(false);
   const [tab, setTab] = useState('overview');
   const [playlistQuery, setPlaylistQuery] = useState('');
-  const [collapsed, setCollapsed] = useState({});
+  // Playlist groups start collapsed; the user opens the ones they need.
+  const [expanded, setExpanded] = useState({});
   const [speed, setSpeed] = useState(1);
 
   const mediaRef = useRef(null);
@@ -300,6 +301,20 @@ export default function Player() {
     try {
       await setCompleted(lessonId, next);
       setCompletedState(next);
+      // Keep the playlist marker in sync without a full reload.
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              grouped: current.grouped.map((group) => ({
+                ...group,
+                lessons: group.lessons.map((l) =>
+                  l.id === lessonId ? { ...l, completed: next } : l
+                ),
+              })),
+            }
+          : current
+      );
       toast(next ? 'Marked complete' : 'Marked incomplete');
     } catch (err) {
       toast(err.message, { type: 'error' });
@@ -404,7 +419,7 @@ export default function Player() {
   const durationSec = Number(data.durationSec) || 0;
 
   const toggleSection = (name) => {
-    setCollapsed((current) => ({ ...current, [name]: !current[name] }));
+    setExpanded((current) => ({ ...current, [name]: !current[name] }));
   };
 
   return (
@@ -850,14 +865,14 @@ export default function Player() {
                 ) : (
                   filteredGroups.map((group) => {
                     const key = group.name || 'general';
-                    const isCollapsed = collapsed[key];
+                    const isExpanded = !!expanded[key];
                     return (
                       <div className="sidebar-group mb-5" key={key}>
                         <button
                           type="button"
                           className="mb-3 flex w-full items-center justify-between gap-3 px-2 text-left"
                           onClick={() => toggleSection(key)}
-                          aria-expanded={!isCollapsed}
+                          aria-expanded={isExpanded}
                         >
                           <div className="min-w-0">
                             <h3 className="truncate text-sm font-medium text-ink">
@@ -869,11 +884,11 @@ export default function Player() {
                           </div>
                           <IconChevronDown
                             size={16}
-                            className={`shrink-0 text-ink-3 transition ${isCollapsed ? '-rotate-90' : ''}`}
+                            className={`shrink-0 text-ink-3 transition ${isExpanded ? '' : '-rotate-90'}`}
                           />
                         </button>
 
-                        {isCollapsed ? null : (
+                        {isExpanded ? (
                           group.lessons.map((l) => {
                             const isCurrent = l.id === lesson.id;
                             const { Glyph, tone } = lessonIcon(l, isCurrent);
@@ -897,7 +912,11 @@ export default function Player() {
                                 <div className="min-w-0 flex-1">
                                   <p
                                     className={`truncate text-xs ${
-                                      isCurrent ? 'font-medium text-blue-300' : 'text-ink-2'
+                                      isCurrent
+                                        ? 'font-medium text-blue-300'
+                                        : l.completed
+                                          ? 'text-ink-4 line-through decoration-ink-4/50'
+                                          : 'text-ink-2'
                                     }`}
                                   >
                                     {l.title}
@@ -905,19 +924,25 @@ export default function Player() {
                                   <p className="mt-1 text-[10px] text-ink-4">
                                     {isCurrent
                                       ? `${formatClock(l.durationSec)} · Playing`
+                                      : l.completed
+                                        ? `${formatClock(l.durationSec)} · Completed`
                                       : l.durationSec
                                         ? formatClock(l.durationSec)
                                         : l.type}
                                   </p>
                                 </div>
 
-                                {isCurrent ? (
+                                {l.completed ? (
+                                  <span className="shrink-0 text-[10px] font-medium text-ok">
+                                    Done
+                                  </span>
+                                ) : isCurrent ? (
                                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
                                 ) : null}
                               </Link>
                             );
                           })
-                        )}
+                        ) : null}
                       </div>
                     );
                   })

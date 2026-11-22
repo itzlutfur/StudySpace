@@ -2,7 +2,7 @@ import express from 'express';
 import fsp from 'node:fs/promises';
 
 import { getCourse, getLessonWithCourse, touchCourse } from '../lib/courses.js';
-import { shouldOfferResume, formatTime } from '../lib/progress.js';
+import { isComplete, shouldOfferResume, formatTime } from '../lib/progress.js';
 import { get } from '../db/index.js';
 
 const router = express.Router();
@@ -47,7 +47,13 @@ router.get('/:lessonId', async (req, res) => {
       group = { name: key, lessons: [] };
       grouped.push(group);
     }
-    group.lessons.push(l);
+    // The playlist shows a done marker per lesson, so the completion flag has
+    // to travel with the lesson itself.
+    const lessonProgress = course.progressByLessonId.get(l.id) ?? null;
+    group.lessons.push({
+      ...l,
+      completed: lessonProgress ? isComplete(lessonProgress) : false,
+    });
   }
 
   res.json({

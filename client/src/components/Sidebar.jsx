@@ -53,40 +53,45 @@ export default function Sidebar({ onNavigate }) {
   const { theme, toggle } = useTheme();
 
   return (
-    <div className="flex h-full flex-col px-5 py-6">
-      <div className="flex items-center gap-3 px-2">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white">
-          <IconLogo size={24} />
+    /* The panel is pinned to the bottom of the sidebar; the brand and the
+       navigation scroll above it when the sidebar is shorter than the
+       viewport, so the theme toggle is never pushed out of view. */
+    <div className="flex h-full min-h-0 flex-col px-5 py-6">
+      <div className="scroll-thin min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="flex items-center gap-3 px-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white">
+            <IconLogo size={24} />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight text-ink">StudySpace</h1>
+            <p className="text-xs text-ink-3">Your personal library</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight text-ink">StudySpace</h1>
-          <p className="text-xs text-ink-3">Your personal library</p>
+
+        <div className="mt-10">
+          <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-4">
+            Workspace
+          </p>
+          <nav className="space-y-1">
+            {WORKSPACE.map((item) => (
+              <NavItem key={item.label} {...item} onClick={onNavigate} />
+            ))}
+          </nav>
+        </div>
+
+        <div className="mt-9">
+          <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-4">
+            Preferences
+          </p>
+          <nav className="space-y-1">
+            {PREFERENCES.map((item) => (
+              <NavItem key={item.label} {...item} onClick={onNavigate} />
+            ))}
+          </nav>
         </div>
       </div>
 
-      <div className="mt-10">
-        <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-4">
-          Workspace
-        </p>
-        <nav className="space-y-1">
-          {WORKSPACE.map((item) => (
-            <NavItem key={item.label} {...item} onClick={onNavigate} />
-          ))}
-        </nav>
-      </div>
-
-      <div className="mt-9">
-        <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-4">
-          Preferences
-        </p>
-        <nav className="space-y-1">
-          {PREFERENCES.map((item) => (
-            <NavItem key={item.label} {...item} onClick={onNavigate} />
-          ))}
-        </nav>
-      </div>
-
-      <div className="mt-auto rounded-2xl border border-hair bg-raised p-4">
+      <div className="mt-4 shrink-0 rounded-2xl border border-hair bg-raised p-4">
         <div className="flex items-center gap-2 text-xs text-ok">
           <span className="h-2 w-2 rounded-full bg-ok" />
           Local library

@@ -33,9 +33,12 @@ export default function AppShell({ children }) {
   }, [drawerOpen]);
 
   return (
-    <div className="flex min-h-screen bg-bg text-ink">
+    /* The shell is exactly one viewport tall. The page content scrolls in
+       <main>, so the sidebar keeps its own height and its bottom panel stays
+       on screen instead of being pushed below the fold by a long page. */
+    <div className="flex h-screen overflow-hidden bg-bg text-ink">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-hair bg-surface lg:flex">
+      <aside className="hidden w-64 shrink-0 flex-col overflow-hidden border-r border-hair bg-surface lg:flex">
         <Sidebar />
       </aside>
 
@@ -47,13 +50,13 @@ export default function AppShell({ children }) {
             onClick={() => setDrawerOpen(false)}
             aria-hidden="true"
           />
-          <aside className="absolute inset-y-0 left-0 w-64 flex-col border-r border-hair bg-surface">
+          <aside className="absolute inset-y-0 left-0 w-64 flex-col overflow-hidden border-r border-hair bg-surface">
             <Sidebar onNavigate={() => setDrawerOpen(false)} />
           </aside>
         </div>
       ) : null}
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
         <header className="flex h-14 items-center gap-3 border-b border-hair bg-surface px-4 lg:hidden">
           <button
@@ -82,7 +85,7 @@ export default function AppShell({ children }) {
           </Link>
         </header>
 
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

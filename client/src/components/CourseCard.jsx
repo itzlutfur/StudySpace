@@ -13,6 +13,7 @@ import { courseTargetUrl } from '../utils/courseTarget.js';
  * These are literal class strings — Tailwind cannot generate classes built
  * at runtime.
  */
+
 const PALETTES = [
   {
     banner: 'from-blue-500/30 to-indigo-600/10',
@@ -86,7 +87,7 @@ export default function CourseCard({
 
   const banner = (
     <div
-      className={`relative flex ${variant === 'continue' ? 'h-40' : 'h-36'} items-center justify-center overflow-hidden bg-gradient-to-br ${palette.banner}`}
+      className={`relative flex ${variant === 'continue' ? 'h-40' : 'h-36'} items-center justify-center overflow-hidden bg-linear-to-br ${palette.banner}`}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_65%)]" />
       <span className={`text-5xl ${palette.text}`}>{glyphFor(course.title)}</span>
@@ -197,7 +198,7 @@ export default function CourseCard({
               Open Course →
             </Link>
           ) : (
-            <span className="shrink-0 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-ink-4">
+            <span className="shrink-0 rounded-lg bg-white/4 px-3 py-2 text-xs text-ink-4">
               No lessons
             </span>
           )}

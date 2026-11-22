@@ -1,4 +1,4 @@
--- CourseStream schema
+-- StudySpace schema
 -- Lessons are keyed by their path RELATIVE to the course root so that moving
 -- or renaming the course folder on disk does not destroy progress.
 
@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS lessons (
   type       TEXT    NOT NULL,
   position   INTEGER NOT NULL,
   size_bytes INTEGER,
+  -- Media duration in seconds, when it could be read from the container.
+  -- 0 means "unknown" — the UI renders an em dash rather than a guess.
+  duration_sec REAL  NOT NULL DEFAULT 0,
   missing    INTEGER NOT NULL DEFAULT 0,
   UNIQUE (course_id, rel_path)
 );

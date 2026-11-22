@@ -1,5 +1,5 @@
 /**
- * A thin fetch wrapper for the CourseStream JSON API.
+ * A thin fetch wrapper for the StudySpace JSON API.
  *
  * Errors carry the HTTP status and the parsed body, so callers can react to
  * specific failures — e.g. the 409 "course already exists" response, which

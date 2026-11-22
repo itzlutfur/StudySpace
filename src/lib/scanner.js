@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { classify, extOf, isUnplayableInBrowser } from './media.js';
+import { probeDuration } from './duration.js';
 import { SCAN } from '../config.js';
 import { relativeKey } from './paths.js';
 
@@ -95,7 +96,7 @@ async function collectFiles(dir, root, depth, acc) {
  * Scan a course folder and build the lesson list.
  *
  * Returns {
- *   root, title, lessons: [{ relPath, absPath, title, section, type, sizeBytes, warn }],
+ *   root, title, lessons: [{ relPath, absPath, title, section, type, sizeBytes, durationSec, warn }],
  *   sections: [{ name, count }],
  *   counts: { video, audio, document, text },
  *   overview: string|null,
@@ -155,6 +156,13 @@ export async function scanFolder(rootPath) {
         ? 'This container may not play in your browser (no transcoding is performed).'
         : null;
 
+      // Best-effort: only MP4-family containers carry a readable duration in
+      // their header. Anything else stays 0, which the UI shows as "—".
+      let durationSec = 0;
+      if (type === 'video' || type === 'audio') {
+        durationSec = (await probeDuration(file)) ?? 0;
+      }
+
       lessons.push({
         relPath: rel,
         absPath: file,
@@ -163,6 +171,7 @@ export async function scanFolder(rootPath) {
         sectionRaw: sectionName,
         type,
         sizeBytes,
+        durationSec,
         warn,
       });
     }

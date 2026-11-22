@@ -48,10 +48,31 @@ export async function initDb() {
 
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   conn.exec(schema);
+  migrate(conn);
 
   db = conn;
   db.__driver = driver;
   return db;
+}
+
+/**
+ * Add columns that newer versions of the app expect.
+ *
+ * The database lives in the user's app-data directory and is created on the
+ * first run, so an existing install has tables that predate later schema
+ * changes. `CREATE TABLE IF NOT EXISTS` in schema.sql will not add a column
+ * to a table that already exists, so new columns are applied here instead.
+ *
+ * Each migration is additive and idempotent: it checks for the column first,
+ * so running it on every start is safe.
+ */
+function migrate(conn) {
+  const columns = new Set(
+    (conn.prepare('PRAGMA table_info(lessons)').all() ?? []).map((c) => c.name)
+  );
+  if (!columns.has('duration_sec')) {
+    conn.exec('ALTER TABLE lessons ADD COLUMN duration_sec REAL NOT NULL DEFAULT 0');
+  }
 }
 
 export function getDb() {

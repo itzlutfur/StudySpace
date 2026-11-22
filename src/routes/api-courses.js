@@ -156,7 +156,9 @@ router.get('/', (req, res) => {
     lastOpenedAt: c.last_opened_at,
     stats: c.stats,
     resumeLessonId: c.resumeLessonId,
+    firstLessonId: c.lessons[0]?.id ?? null,
     lessonCount: c.lessons.length,
+    totalDurationSec: c.lessons.reduce((sum, l) => sum + (Number(l.duration_sec) || 0), 0),
   }));
   res.json({ courses });
 });

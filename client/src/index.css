@@ -1,0 +1,134 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------
+   StudySpace design tokens, extracted from the reference designs.
+   Declared as @theme so Tailwind generates the matching utilities
+   (bg-surface, text-ink-2, border-hair, …) alongside the raw palette.
+   ------------------------------------------------------------------ */
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Surfaces, darkest to lightest */
+  --color-bg: #0d0f14;
+  --color-surface: #111318;
+  --color-card: #15171d;
+  --color-card-hover: #191b22;
+  --color-raised: #181a21;
+
+  /* Hairlines */
+  --color-hair: rgb(255 255 255 / 0.06);
+  --color-hair-strong: rgb(255 255 255 / 0.1);
+
+  /* Text */
+  --color-ink: #ffffff;
+  --color-ink-2: #a1a1aa;
+  --color-ink-3: #71717a;
+  --color-ink-4: #52525b;
+
+  /* Accents */
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-accent-soft: rgb(59 130 246 / 0.1);
+  --color-accent-line: rgb(59 130 246 / 0.2);
+  --color-ok: #10b981;
+  --color-ok-soft: rgb(16 185 129 / 0.1);
+  --color-warn: #f59e0b;
+  --color-warn-soft: rgb(245 158 11 / 0.1);
+  --color-plum: #a855f7;
+  --color-plum-soft: rgb(168 85 247 / 0.1);
+  --color-rose: #f43f5e;
+  --color-rose-soft: rgb(244 63 94 / 0.1);
+}
+
+/* ------------------------------------------------------------------
+   Global base rules
+   ------------------------------------------------------------------ */
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The thin scrollbar from the reference designs. */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #30333d;
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* A visible focus ring on keyboard navigation only. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* Range inputs (playback speed is a select, but the player uses a
+     native timeline in some browsers) — keep them on-theme. */
+  input[type='range'] {
+    accent-color: var(--color-accent);
+  }
+
+  /* The theme toggle shows one glyph per theme. */
+  .theme-icon-light {
+    display: none;
+  }
+
+  [data-theme='light'] .theme-icon-dark {
+    display: none;
+  }
+
+  [data-theme='light'] .theme-icon-light {
+    display: inline;
+  }
+}
+
+@layer utilities {
+  /* A subtle scrollable region inside the playlist rail. */
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #30333d transparent;
+  }
+}
+
+/* The light theme keeps the same structure, only the surface ramp and
+   the text ramp change. The reference designs are dark-only, so this
+   is a light equivalent rather than a pixel copy. */
+[data-theme='light'] {
+  --color-bg: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #f7f8fa;
+  --color-raised: #f1f3f6;
+  --color-hair: rgb(9 9 11 / 0.08);
+  --color-hair-strong: rgb(9 9 11 / 0.14);
+  --color-ink: #101014;
+  --color-ink-2: #52525b;
+  --color-ink-3: #71717a;
+  --color-ink-4: #a1a1aa;
+  --color-accent-soft: rgb(59 130 246 / 0.1);
+  --color-accent-line: rgb(59 130 246 / 0.28);
+  --color-ok-soft: rgb(16 185 129 / 0.12);
+  --color-warn-soft: rgb(245 158 11 / 0.12);
+  --color-plum-soft: rgb(168 85 247 / 0.12);
+  --color-rose-soft: rgb(244 63 94 / 0.12);
+}

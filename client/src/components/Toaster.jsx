@@ -43,12 +43,21 @@ export function ToastProvider({ children }) {
       {children}
       <div className="toast-host" id="toast-host" aria-live="polite">
         {toasts.map((t) => (
-          <div key={t.id} className={`toast toast-${t.type}`}>
-            <span>{t.message}</span>
+          <div
+            key={t.id}
+            className={`toast toast-${t.type} flex items-center gap-3 rounded-xl border bg-raised px-4 py-2.5 text-sm shadow-xl ${
+              t.type === 'ok'
+                ? 'border-ok/40'
+                : t.type === 'error'
+                  ? 'border-rose-500/40'
+                  : 'border-hair-strong'
+            }`}
+          >
+            <span className="text-ink-2">{t.message}</span>
             {t.action ? (
               <button
                 type="button"
-                className="btn btn-sm"
+                className="rounded-lg border border-hair-strong px-3 py-1 text-xs font-medium text-ink-2 transition hover:bg-white/[0.05]"
                 onClick={() => {
                   dismiss(t.id);
                   t.action.onClick?.();
@@ -59,7 +68,7 @@ export function ToastProvider({ children }) {
             ) : null}
             <button
               type="button"
-              className="btn-icon"
+              className="btn-icon rounded-lg px-1.5 py-0.5 text-lg leading-none text-ink-3 transition hover:text-ink"
               aria-label="Dismiss"
               onClick={() => dismiss(t.id)}
             >

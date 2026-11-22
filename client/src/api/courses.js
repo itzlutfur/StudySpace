@@ -57,3 +57,8 @@ export function saveTheme(theme) {
 export function saveSort(sort) {
   return apiFetch('/api/dashboard/sort', { method: 'POST', body: { sort } });
 }
+
+/** Persist the default playback speed used when a video starts. */
+export function savePlaybackSpeed(speed) {
+  return apiFetch('/api/dashboard/playback-speed', { method: 'POST', body: { speed } });
+}

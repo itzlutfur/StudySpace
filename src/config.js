@@ -6,7 +6,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const ROOT = path.resolve(__dirname, '..');
 
+/**
+ * The product name shown in the UI.
+ *
+ * Note: `APP_NAME` also names the data directory under %APPDATA%. It is
+ * deliberately NOT the display name — renaming it would orphan every existing
+ * user's database. The two are separated here so that is explicit.
+ */
 export const APP_NAME = 'CourseStream';
+export const DISPLAY_NAME = 'StudySpace';
 
 export const DEFAULT_PORT = 4317;
 export const MAX_PORT_ATTEMPTS = 11; // 4317..4327

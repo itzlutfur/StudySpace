@@ -131,16 +131,50 @@ r = await api('/api/dashboard');
 check('sort persisted server-side (Bug B fix)', r.data?.sort === 'name', `sort=${r.data?.sort}`);
 await api('/api/dashboard/sort', { method: 'POST', body: { sort: 'recent' } });
 
+// ---- client disconnects mid-stream
+// The browser aborts a media request routinely (seeking, closing the tab).
+// That must not take the server down with ERR_STREAM_PREMATURE_CLOSE.
+{
+  const ac = new AbortController();
+  const stream = await fetch(`${BASE}/player/${lessonId}/stream`, { signal: ac.signal });
+  setTimeout(() => ac.abort(), 20);
+  try {
+    const reader = stream.body.getReader();
+    while (true) {
+      const { done } = await reader.read();
+      if (done) break;
+    }
+  } catch {
+    // The client aborted — expected.
+  }
+  // The server must still be answering requests.
+  const alive = await fetch(`${BASE}/api/dashboard`);
+  check('server survives a client disconnect mid-stream', alive.status === 200, `status=${alive.status}`);
+}
+
 // ---- document streaming
 // The document route only serves document/text lessons, so it needs a lesson
-// that is actually one — the first lesson in the course is usually a video.
+// that is actually one — and a lesson that is not, to prove the rejection.
 const documentLesson = (scan?.lessons ?? []).find((l) => l.type === 'document' || l.type === 'text');
-r = await fetch(`${BASE}/player/${lessonId}/document`);
-check(
-  'GET /player/:id/document rejects a non-document lesson',
-  r.status === 400,
-  `status=${r.status}`
-);
+const nonDocumentLesson = (scan?.lessons ?? []).find((l) => l.type !== 'document' && l.type !== 'text');
+
+if (nonDocumentLesson) {
+  const nonDocId = (await api(`/api/courses/${courseId}`)).data?.grouped
+    ?.flatMap((g) => g.lessons)
+    ?.find((l) => l.rel_path === nonDocumentLesson.relPath)?.id;
+  r = await fetch(`${BASE}/player/${nonDocId}/document`);
+  check(
+    'GET /player/:id/document rejects a non-document lesson',
+    r.status === 400,
+    `status=${r.status}`
+  );
+} else {
+  check(
+    'GET /player/:id/document rejects a non-document lesson',
+    true,
+    'no non-document lesson in the fixture — skipped'
+  );
+}
 
 if (documentLesson) {
   const docId = (r = await api(`/api/courses/${courseId}`)).data?.grouped
@@ -175,6 +209,34 @@ check('restored course keeps its lessons', (r.data?.grouped ?? []).length > 0);
 await api(`/api/courses/${courseId}`, { method: 'DELETE' });
 r = await api('/api/courses');
 check('course removed for cleanup', !(r.data?.courses ?? []).some((c) => c.id === courseId));
+
+// ---- native folder picker
+// The real dialog blocks until a human answers it, so this checks the
+// contract around it rather than the dialog itself: the route exists, it is
+// POST-only, and only one dialog may be open at a time.
+r = await api('/api/pick-folder', { method: 'GET' });
+check('GET /api/pick-folder is not allowed', r.status === 404, String(r.status));
+
+const firstPick = api('/api/pick-folder', { method: 'POST' });
+await new Promise((resolve) => setTimeout(resolve, 300));
+const secondPick = await api('/api/pick-folder', { method: 'POST' });
+check('a second picker request is rejected with 409', secondPick.status === 409, String(secondPick.status));
+check(
+  'the 409 explains that a picker is already open',
+  /already open/i.test(secondPick.data?.error ?? ''),
+  JSON.stringify(secondPick.data)
+);
+
+// Close whichever dialog opened first.
+const settled = await Promise.race([
+  firstPick,
+  new Promise((resolve) => setTimeout(() => resolve({ status: 'timeout' }), 1500)),
+]);
+check(
+  'the first picker request is not rejected by the guard',
+  settled.status !== 409,
+  String(settled.status)
+);
 
 const failed = results.filter((x) => !x.ok);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);

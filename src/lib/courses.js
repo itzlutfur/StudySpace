@@ -71,8 +71,8 @@ export function createCourse({ title, rootPath, lessons }) {
     let position = 0;
     for (const lesson of lessons) {
       run(
-        `INSERT INTO lessons (course_id, rel_path, abs_path, title, section, type, position, size_bytes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO lessons (course_id, rel_path, abs_path, title, section, type, position, size_bytes, duration_sec)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           courseId,
           lesson.relPath,
@@ -82,6 +82,7 @@ export function createCourse({ title, rootPath, lessons }) {
           lesson.type,
           position++,
           lesson.sizeBytes ?? null,
+          lesson.durationSec ?? 0,
         ]
       );
     }
@@ -119,8 +120,15 @@ export function reconcileCourse(courseId, scannedLessons) {
         }
         // Refresh mutable metadata (title/section/size) in case the file changed.
         run(
-          'UPDATE lessons SET title = ?, section = ?, size_bytes = ?, abs_path = ? WHERE id = ?',
-          [found.title, found.section ?? '', found.sizeBytes ?? null, found.absPath, lesson.id]
+          'UPDATE lessons SET title = ?, section = ?, size_bytes = ?, abs_path = ?, duration_sec = ? WHERE id = ?',
+          [
+            found.title,
+            found.section ?? '',
+            found.sizeBytes ?? null,
+            found.absPath,
+            found.durationSec ?? 0,
+            lesson.id,
+          ]
         );
       }
     }
@@ -130,8 +138,8 @@ export function reconcileCourse(courseId, scannedLessons) {
     for (const scanned of scannedLessons) {
       if (existingByRel.has(scanned.relPath)) continue;
       run(
-        `INSERT INTO lessons (course_id, rel_path, abs_path, title, section, type, position, size_bytes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO lessons (course_id, rel_path, abs_path, title, section, type, position, size_bytes, duration_sec)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           courseId,
           scanned.relPath,
@@ -141,6 +149,7 @@ export function reconcileCourse(courseId, scannedLessons) {
           scanned.type,
           position++,
           scanned.sizeBytes ?? null,
+          scanned.durationSec ?? 0,
         ]
       );
       added.push(scanned.relPath);
@@ -191,8 +200,8 @@ export function restoreCourse(snapshot) {
     const idMap = new Map();
     for (const lesson of snapshot.lessons) {
       const ins = run(
-        `INSERT INTO lessons (id, course_id, rel_path, abs_path, title, section, type, position, size_bytes, missing)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO lessons (id, course_id, rel_path, abs_path, title, section, type, position, size_bytes, duration_sec, missing)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           lesson.id,
           courseId,
@@ -203,6 +212,7 @@ export function restoreCourse(snapshot) {
           lesson.type,
           lesson.position,
           lesson.size_bytes,
+          lesson.duration_sec ?? 0,
           lesson.missing,
         ]
       );

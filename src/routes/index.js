@@ -6,7 +6,7 @@ import apiDashboardRoutes from './api-dashboard.js';
 import apiLessonRoutes from './api-lessons.js';
 import playerRoutes from './player.js';
 import progressRoutes from './progress.js';
-import browseRoutes from './browse.js';
+import pickFolderRoutes from './pick-folder.js';
 import config from '../config.js';
 
 const SPA_INDEX = path.join(config.DIST_DIR, 'index.html');
@@ -27,7 +27,7 @@ export function registerRoutes(app) {
   app.use('/api/lessons', apiLessonRoutes);
   app.use('/player', playerRoutes);
   app.use('/api/progress', progressRoutes);
-  app.use('/api/browse', browseRoutes);
+  app.use('/api/pick-folder', pickFolderRoutes);
 
   // 404 for anything unmatched.
   app.use((req, res) => {

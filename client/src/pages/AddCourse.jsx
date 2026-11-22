@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
-import { scanFolder, createCourse } from '../api/courses.js';
-import { browse } from '../api/browse.js';
+import { scanFolder, createCourse, fetchCourse } from '../api/courses.js';
+import { pickFolder } from '../api/pickFolder.js';
 import { useToast } from '../components/Toaster.jsx';
 import { useConfirm } from '../components/ConfirmModal.jsx';
-import Modal from '../components/Modal.jsx';
+import { courseTargetUrl } from '../utils/courseTarget.js';
 
 /** Group lessons by their section, preserving the order they were detected. */
 function groupLessons(lessons) {
@@ -35,7 +35,7 @@ export default function AddCourse() {
   const [title, setTitle] = useState('');
   const [selected, setSelected] = useState(new Set());
   const [adding, setAdding] = useState(false);
-  const [browseOpen, setBrowseOpen] = useState(false);
+  const [picking, setPicking] = useState(false);
   const pathInput = useRef(null);
 
   // Keep the title in sync with the scanned folder name until the user edits it.
@@ -88,7 +88,21 @@ export default function AddCourse() {
           detail: 'Open the existing course instead?',
           confirmLabel: 'Open course',
         });
-        if (ok) navigate(`/courses/${err.data.existingId}`);
+        if (ok) {
+          // Open the existing course on the player, the same way its card
+          // does — the legacy `/courses/:id` URL only redirects there.
+          try {
+            const existing = await fetchCourse(err.data.existingId);
+            const first = existing.grouped?.flatMap((group) => group.lessons)[0] ?? null;
+            const target = courseTargetUrl({
+              resumeLessonId: existing.course?.resumeLessonId ?? null,
+              firstLessonId: first?.id ?? null,
+            });
+            navigate(target ?? '/');
+          } catch {
+            navigate('/');
+          }
+        }
         return;
       }
       toast(err.message, { type: 'error', timeout: 7000 });
@@ -99,6 +113,32 @@ export default function AddCourse() {
     setScan(null);
     setScanError('');
     setSelected(new Set());
+  };
+
+  /**
+   * Open the operating system's own folder picker. The dialog is raised by
+   * the server process, because a browser cannot hand back the absolute path
+   * of a picked folder. Exactly one dialog may be open at a time — the server
+   * rejects a second request — so the button is disabled while one is up.
+   */
+  const onPickFolder = async () => {
+    if (picking) return;
+    setPicking(true);
+    setScanError('');
+    try {
+      const chosen = await pickFolder();
+      if (!chosen) return; // the user dismissed the dialog
+      setPath(chosen);
+      await runScan(chosen);
+    } catch (err) {
+      if (err.status === 409) {
+        setScanError('A folder picker is already open — close it and try again.');
+        return;
+      }
+      setScanError(err.data?.detail ? `${err.message} — ${err.data.detail}` : err.message);
+    } finally {
+      setPicking(false);
+    }
   };
 
   const toggleLesson = (relPath) => {
@@ -124,22 +164,31 @@ export default function AddCourse() {
 
   return (
     <>
-      <div className="crumbs">
-        <Link to="/">Library</Link>
-        <span>/</span>
-        <span>Add course</span>
+      <div className="border-b border-hair px-5 py-5 lg:px-10">
+        <nav className="flex items-center gap-2 text-xs text-ink-3">
+          <Link to="/" className="transition hover:text-ink">
+            Library
+          </Link>
+          <span>/</span>
+          <span className="text-ink-2">Add course</span>
+        </nav>
+        <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">Add a course</h1>
+        <p className="mt-2 text-sm text-ink-3">
+          Choose a folder from your computer and StudySpace will organize it into a course.
+        </p>
       </div>
 
-      <h1>Add a course</h1>
+      <div className="px-5 py-8 lg:px-10">
+        <div className="max-w-3xl">
 
-      {!scan ? (
-        <section id="step-pick">
-          <label className="field" htmlFor="path-input">
-            <span className="field-label">Folder path</span>
+          {!scan ? (
+            <section id="step-pick">
+              <label className="field block" htmlFor="path-input">
+                <span className="field-label mb-1.5 block text-xs text-ink-3">Folder path</span>
             <input
               id="path-input"
               ref={pathInput}
-              className="input"
+                  className="w-full rounded-xl border border-hair-strong bg-card px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-ink-4 focus:border-accent/50"
               type="text"
               placeholder="C:\Users\you\Videos\my-course"
               value={path}
@@ -148,83 +197,99 @@ export default function AddCourse() {
                 if (e.key === 'Enter') runScan(path);
               }}
             />
-          </label>
+              </label>
 
-          {scanError ? (
-            <div className="alert alert-error" id="scan-error">
-              {scanError}
-            </div>
-          ) : null}
+              {scanError ? (
+                <div
+                  className="alert alert-error mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-400"
+                  id="scan-error"
+                >
+                  {scanError}
+                </div>
+              ) : null}
 
-          <div className="row-actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              id="scan-btn"
-              disabled={scanning}
-              onClick={() => runScan(path)}
-            >
-              {scanning ? 'Scanning…' : 'Scan folder'}
-            </button>
-            <button type="button" className="btn" id="browse-btn" onClick={() => setBrowseOpen(true)}>
-              Browse…
-            </button>
-            <Link to="/" className="btn btn-ghost" id="back-btn">
-              Cancel
-            </Link>
-          </div>
+              <div className="row-actions mb-6 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover disabled:opacity-40"
+                  id="scan-btn"
+                  disabled={scanning}
+                  onClick={() => runScan(path)}
+                >
+                  {scanning ? 'Scanning…' : 'Scan folder'}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-xl border border-hair-strong px-4 py-2.5 text-sm text-ink-2 transition hover:bg-white/[0.04] disabled:opacity-40"
+                  id="browse-btn"
+                  onClick={onPickFolder}
+                  disabled={picking}
+                >
+                  {picking ? 'Waiting for picker…' : 'Choose folder…'}
+                </button>
+                <Link
+                  to="/"
+                  className="rounded-xl px-4 py-2.5 text-sm text-ink-3 transition hover:bg-white/[0.04]"
+                  id="back-btn"
+                >
+                  Cancel
+                </Link>
+              </div>
 
-          <div
-            className="dropzone"
-            id="dropzone"
-            tabIndex={0}
-            onClick={() => pathInput.current?.focus()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.currentTarget.classList.add('dragover');
-            }}
-            onDragLeave={(e) => e.currentTarget.classList.remove('dragover')}
-            onDrop={(e) => {
-              e.preventDefault();
-              e.currentTarget.classList.remove('dragover');
-              toast('Browsers cannot read a dropped folder path — paste it in the field above', {
-                timeout: 6000,
-              });
-            }}
-          >
-            <p>
-              <strong>Drop a folder here</strong>
-            </p>
-            <p className="muted small">
-              Browsers cannot read a dropped folder path — paste it in the field above.
-            </p>
-          </div>
-        </section>
-      ) : (
-        <section id="step-review">
-          <div className="panel">
-            <div className="panel-title">
+              <div
+                className="dropzone rounded-2xl border-2 border-dashed border-hair-strong px-6 py-10 text-center transition hover:border-accent/50 hover:bg-accent-soft"
+                tabIndex={0}
+                onClick={() => pathInput.current?.focus()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.add('dragover');
+                }}
+                onDragLeave={(e) => e.currentTarget.classList.remove('dragover')}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('dragover');
+                  toast('Browsers cannot read a dropped folder path — use "Choose folder…" instead', {
+                    timeout: 6000,
+                  });
+                }}
+              >
+                <p className="font-medium text-ink">
+                  <strong>Drop a folder here</strong>
+                </p>
+                <p className="muted small mt-1 text-xs text-ink-3">
+                  Browsers cannot read a dropped folder path — use “Choose folder…”, or paste the path
+                  above.
+                </p>
+              </div>
+            </section>
+          ) : (
+            <section id="step-review">
+              <div className="panel overflow-hidden rounded-2xl border border-hair bg-card p-5">
+                <div className="panel-title mb-4 flex items-center justify-between gap-3">
               <span>Ready to add</span>
-              <span className="muted small" id="review-total">
+                  <span className="muted small text-xs text-ink-3" id="review-total">
                 {scan.total} lesson{scan.total === 1 ? '' : 's'}
               </span>
-            </div>
+                </div>
 
-            <label className="field" htmlFor="title-input">
-              <span className="field-label">Course title</span>
+                <label className="field mb-4 block" htmlFor="title-input">
+                  <span className="field-label mb-1.5 block text-xs text-ink-3">Course title</span>
               <input
                 id="title-input"
-                className="input"
+                    className="w-full rounded-xl border border-hair-strong bg-surface px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-ink-4 focus:border-accent/50"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
-            </label>
+                </label>
 
-            <div className="scan-summary" id="scan-summary">
+            <div className="scan-summary mb-3 flex flex-wrap gap-2" id="scan-summary">
               {Object.entries(scan.counts ?? {}).map(([kind, count]) =>
                 count ? (
-                  <span key={kind} className="chip">
+                  <span
+                    key={kind}
+                    className="chip rounded-full border border-hair-strong bg-surface px-3 py-1 text-xs text-ink-2"
+                  >
                     {count} {kind}
                   </span>
                 ) : null
@@ -232,17 +297,20 @@ export default function AddCourse() {
             </div>
 
             {scan.warnings?.length ? (
-              <div className="alert alert-warn" id="scan-warnings">
+              <div
+                className="alert alert-warn mb-4 rounded-xl border border-warn/40 bg-warn-soft px-4 py-3 text-sm text-warn"
+                id="scan-warnings"
+              >
                 {scan.warnings.join(' ')}
               </div>
             ) : null}
 
             {scan.subfolders?.length ? (
-              <div className="chip-row" id="subfolders" style={{ marginBottom: '1rem' }}>
+              <div className="chip-row mb-4 flex flex-wrap gap-2" id="subfolders">
                 {scan.subfolders.map((folder) => (
                   <button
                     type="button"
-                    className="chip"
+                    className="chip rounded-full border border-hair-strong bg-surface px-3 py-1 text-xs text-ink-2 transition hover:border-accent/50 hover:text-accent"
                     key={folder.path}
                     onClick={() => {
                       setPath(folder.path);
@@ -255,11 +323,14 @@ export default function AddCourse() {
               </div>
             ) : null}
 
-            <div className="review-list" id="review-list">
+            <div
+              className="review-list scroll-thin max-h-[420px] overflow-y-auto rounded-xl border border-hair"
+              id="review-list"
+            >
               {groupLessons(scan.lessons).map((group) => (
                 <div className="review-group" key={group.name || 'general'}>
-                  <div className="review-group-title">
-                    <label className="review-item" style={{ fontWeight: 600 }}>
+                  <div className="review-group-title sticky top-0 z-10 bg-surface px-4 py-2.5">
+                    <label className="review-item font-semibold" style={{ fontWeight: 600 }}>
                       <input
                         type="checkbox"
                         checked={group.lessons.every((l) => selected.has(l.relPath))}
@@ -275,9 +346,11 @@ export default function AddCourse() {
                         checked={selected.has(lesson.relPath)}
                         onChange={() => toggleLesson(lesson.relPath)}
                       />
-                      <span className="lesson-title">{lesson.title}</span>
+                      <span className="lesson-title flex-1 truncate">{lesson.title}</span>
                       {lesson.warn ? <span title={lesson.warn}>⚠</span> : null}
-                      <span className="lesson-type">{lesson.type}</span>
+                      <span className="lesson-type text-[10px] uppercase tracking-wide text-ink-4">
+                        {lesson.type}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -285,170 +358,30 @@ export default function AddCourse() {
             </div>
           </div>
 
-          <div className="row-actions">
+          <div className="row-actions mt-6 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="btn btn-primary"
+              className="rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover disabled:opacity-40"
               id="add-btn"
               disabled={adding}
               onClick={onAdd}
             >
               {adding ? 'Adding…' : `Add ${selected.size} lesson${selected.size === 1 ? '' : 's'}`}
             </button>
-            <button type="button" className="btn" id="back-btn" onClick={back}>
+            <button
+              type="button"
+              className="rounded-xl border border-hair-strong px-4 py-2.5 text-sm text-ink-2 transition hover:bg-white/[0.04]"
+              id="back-btn"
+              onClick={back}
+            >
               Back
             </button>
           </div>
-        </section>
-      )}
+            </section>
+          )}
 
-      {browseOpen ? (
-        <BrowseModal
-          onClose={() => setBrowseOpen(false)}
-          onChoose={(chosenPath) => {
-            setPath(chosenPath);
-            setBrowseOpen(false);
-            runScan(chosenPath);
-          }}
-        />
-      ) : null}
-    </>
-  );
-}
-
-/** A folder picker backed by the /api/browse endpoint. */
-function BrowseModal({ onClose, onChoose }) {
-  const [current, setCurrent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [chosen, setChosen] = useState('');
-
-  const load = async (target) => {
-    setLoading(true);
-    setError('');
-    try {
-      const result = await browse(target);
-      setCurrent(result);
-    } catch (err) {
-      setError(err.data?.detail ?? err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load('');
-  }, []);
-
-  return (
-    <Modal title="Browse for a folder" onClose={onClose} size="lg">
-      <div className="browse-roots" id="browse-roots">
-        {(current?.roots ?? []).map((root) => (
-          <button
-            type="button"
-            className="btn btn-sm"
-            key={root.path}
-            title={root.path}
-            onClick={() => load(root.path)}
-          >
-            {root.name}
-          </button>
-        ))}
-      </div>
-
-      <div className="breadcrumbs" id="breadcrumbs">
-        <button
-          type="button"
-          disabled={!current?.parent}
-          onClick={() => current?.parent && load(current.parent)}
-        >
-          ↑ Up
-        </button>
-        {(current?.breadcrumbs ?? []).map((crumb, i) => (
-          <span key={crumb.path}>
-            <button type="button" onClick={() => load(crumb.path)}>
-              {crumb.name}
-            </button>
-            {i < current.breadcrumbs.length - 1 ? ' / ' : ''}
-          </span>
-        ))}
-      </div>
-
-      <div className="browse-list" id="browse-list">
-        {loading ? (
-          <p className="muted small" style={{ padding: '.6rem' }}>
-            Loading…
-          </p>
-        ) : error ? (
-          <p className="muted small" style={{ padding: '.6rem' }}>
-            {error}
-          </p>
-        ) : (current?.dirs?.length ?? 0) + (current?.files?.length ?? 0) === 0 ? (
-          <p className="muted small" style={{ padding: '.6rem' }}>
-            This folder is empty.
-          </p>
-        ) : (
-          <>
-            {(current?.dirs ?? []).map((dir) => (
-              <div
-                className="browse-row"
-                key={dir.path}
-                role="button"
-                tabIndex={0}
-                onClick={() => load(dir.path)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') load(dir.path);
-                }}
-              >
-                <span className="icon">📁</span>
-                <span className="name">{dir.name}</span>
-              </div>
-            ))}
-            {(current?.files ?? []).map((file) => (
-              <div
-                className="browse-row"
-                key={file.path}
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  setChosen(file.path);
-                  onChoose(file.path);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setChosen(file.path);
-                    onChoose(file.path);
-                  }
-                }}
-              >
-                <span className="icon">🎬</span>
-                <span className="name">{file.name}</span>
-                <span className="tag">file</span>
-              </div>
-            ))}
-          </>
-        )}
-      </div>
-
-      <div className="modal-foot">
-        <span className="muted small" id="browse-current">
-          {current?.path ?? ''}
-        </span>
-        <div className="row-actions">
-          <button type="button" className="btn" id="browse-cancel" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            id="browse-choose"
-            disabled={!current?.path}
-            onClick={() => onChoose(chosen || current.path)}
-          >
-            Choose folder
-          </button>
         </div>
       </div>
-    </Modal>
+    </>
   );
 }

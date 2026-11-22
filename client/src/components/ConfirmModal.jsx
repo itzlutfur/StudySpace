@@ -38,14 +38,22 @@ export function ConfirmProvider({ children }) {
       {state ? (
         <Modal title={state.title} onClose={() => close(false)}>
           <p>{state.message}</p>
-          {state.detail ? <p className="muted small">{state.detail}</p> : null}
-          <div className="row-actions row-actions-end" style={{ marginTop: '1rem' }}>
-            <button type="button" className="btn" onClick={() => close(false)}>
+          {state.detail ? <p className="muted small mt-2 text-xs text-ink-3">{state.detail}</p> : null}
+          <div className="row-actions row-actions-end mt-5 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-lg border border-hair-strong px-4 py-2 text-sm text-ink-2 transition hover:bg-white/[0.04]"
+              onClick={() => close(false)}
+            >
               Cancel
             </button>
             <button
               type="button"
-              className={`btn ${state.danger ? 'btn-danger' : 'btn-primary'}`}
+              className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition ${
+                state.danger
+                  ? 'bg-rose-500 hover:bg-rose-600'
+                  : 'bg-accent hover:bg-accent-hover'
+              }`}
               onClick={() => close(true)}
               autoFocus
             >

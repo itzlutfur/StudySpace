@@ -61,8 +61,6 @@ async function main() {
 
   // Hashed build assets — safe to cache forever.
   app.use('/assets', express.static(path.join(config.DIST_DIR, 'assets'), { immutable: true, maxAge: '1y' }));
-  // The stylesheet is served from public/css (not hashed).
-  app.use('/css', express.static(path.join(config.PUBLIC_DIR, 'css'), { maxAge: '1h' }));
 
   registerRoutes(app);
 
@@ -70,7 +68,7 @@ async function main() {
   const { port } = server.address();
   const url = `http://${config.HOST}:${port}`;
 
-  console.log(`\n  CourseStream running at ${url}`);
+  console.log(`\n  StudySpace running at ${url}`);
   console.log(`  Data directory: ${config.appDataDir()}`);
   console.log(`  Press Ctrl+C to stop.\n`);
 
@@ -91,9 +89,23 @@ async function main() {
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+  // A media request that the client abandons mid-stream rejects with
+  // ERR_STREAM_PREMATURE_CLOSE. That rejection is raised after the response
+  // has already been sent, so it never reaches Express's error handler — an
+  // unhandled rejection would kill the process. The streaming routes handle
+  // it themselves; this is the belt-and-braces net for anything else.
+  process.on('unhandledRejection', (err) => {
+    const code = err?.code;
+    if (code === 'ERR_STREAM_PREMATURE_CLOSE' || code === 'ECONNRESET') {
+      console.log('[coursestream] client closed the connection mid-stream');
+      return;
+    }
+    console.error('[coursestream] unhandled rejection:', err?.stack ?? err);
+  });
 }
 
 main().catch((err) => {
-  console.error('Failed to start CourseStream:', err);
+  console.error('Failed to start StudySpace:', err);
   process.exit(1);
 });

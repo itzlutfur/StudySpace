@@ -22,14 +22,28 @@ function applyTheme(theme) {
  * the choice is persisted both locally and server-side.
  */
 export default function useTheme() {
-  const [theme, setTheme] = useState(() => readStoredTheme() || 'dark');
+  const [theme, setThemeState] = useState(() => readStoredTheme() || 'dark');
 
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
 
+  /** Set an explicit theme, persisting it locally and server-side. */
+  const setTheme = useCallback((next) => {
+    const value = next === 'light' ? 'light' : 'dark';
+    setThemeState(value);
+    try {
+      localStorage.setItem(STORAGE_KEY, value);
+    } catch {
+      // Storage may be unavailable (private mode) — the theme still applies.
+    }
+    saveTheme(value).catch(() => {
+      // Persisting server-side is best-effort.
+    });
+  }, []);
+
   const toggle = useCallback(() => {
-    setTheme((current) => {
+    setThemeState((current) => {
       const next = current === 'dark' ? 'light' : 'dark';
       try {
         localStorage.setItem(STORAGE_KEY, next);

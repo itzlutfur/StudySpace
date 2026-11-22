@@ -27,6 +27,10 @@ router.get('/:lessonId', async (req, res) => {
   const noteRow = get('SELECT body FROM notes WHERE lesson_id = ?', [lessonId]) ?? null;
   const bookmarks = get('SELECT COUNT(*) AS n FROM bookmarks WHERE lesson_id = ?', [lessonId])?.n ?? 0;
 
+  // The duration is only known when the container carried a readable one.
+  // 0 means unknown — the UI shows an em dash rather than guessing.
+  const durationSec = Number(lesson.duration_sec) || 0;
+
   // Does the file still exist on disk?
   let exists = true;
   try {
@@ -48,6 +52,7 @@ router.get('/:lessonId', async (req, res) => {
 
   res.json({
     lesson,
+    durationSec,
     course: {
       id: course.id,
       title: course.title,
@@ -55,6 +60,7 @@ router.get('/:lessonId', async (req, res) => {
       stats: course.stats,
       lessonCount: course.lessons.length,
       resumeLessonId: course.resumeLessonId,
+      totalDurationSec: course.lessons.reduce((sum, l) => sum + (Number(l.duration_sec) || 0), 0),
     },
     grouped,
     prev,
